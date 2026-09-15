@@ -1,0 +1,4 @@
+year,days,pop_weighted_mean,days_gt35,mean_pop_frac_gt15,mean_pop_frac_gt35
+2024,150,25.953,39,0.688,0.251
+2025,365,24.817,60,0.769,0.193
+2026,254,22.658,31,0.642,0.158

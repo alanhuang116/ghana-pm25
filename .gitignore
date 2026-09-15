@@ -1,0 +1,17 @@
+# environments
+.venv/
+__pycache__/
+*.pyc
+
+# large or generated data (published via GitHub Releases / gh-pages instead)
+data/
+outputs/
+models/
+dist/
+portal/data/
+portal/report/
+
+# scratch
+*.part
+*.log
+catboost_info/

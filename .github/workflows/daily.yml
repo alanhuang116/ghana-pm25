@@ -1,0 +1,83 @@
+name: GH-PM25 daily run
+
+# Every day: restore pipeline state -> refresh inputs and re-map D-7..D+1 -> publish the 1-km dataset to
+# GitHub Releases -> save state -> redeploy the portal to GitHub Pages.
+on:
+  schedule:
+    - cron: "30 6 * * *"      # 06:30 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ghpm25-daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install Python environment
+        run: |
+          uv venv --python 3.12
+          uv pip install -r requirements.txt
+
+      - name: Restore pipeline state (model, grids, input caches)
+        run: .venv/bin/python scripts/09_pipeline_state.py restore
+
+      - name: Restore published portal data
+        run: |
+          git clone --depth 1 --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" site
+          rm -rf portal/data
+          cp -r site/data portal/data
+          rm -rf site
+
+      - name: Daily run (inputs, 1-km maps D-7..D+1, portal export)
+        run: .venv/bin/python scripts/run_daily.py
+
+      - name: Publish 1-km dataset to GitHub Releases
+        run: .venv/bin/python scripts/08_package_release.py --recent 10 --upload
+
+      - name: Save pipeline state
+        run: .venv/bin/python scripts/09_pipeline_state.py save --upload
+
+      - name: Deploy portal to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ github.token }}
+          publish_dir: ./portal
+          force_orphan: true
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          commit_message: "GH-PM25 daily update"
+
+      - name: Keep the schedule alive (weekly status commit)
+        # GitHub disables scheduled workflows in repositories without activity for 60 days.
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then
+            cp outputs/freshness.json STATUS.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add STATUS.json
+            git commit -m "Weekly data status" || true
+            git push || true
+          fi
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-log
+          path: outputs/logs/
+          retention-days: 14
