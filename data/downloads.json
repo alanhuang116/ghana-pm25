@@ -1,0 +1,431 @@
+{
+ "release_url": "https://github.com/alanhuang116/ghana-pm25/releases/tag/data",
+ "updated": "2026-09-19T11:18:11",
+ "assets": [
+  {
+   "name": "GH-PM25_1km_annual_mean_2024.tif",
+   "size": 587971,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_annual_mean_2024.tif",
+   "kind": "annual_mean",
+   "period": "2024"
+  },
+  {
+   "name": "GH-PM25_1km_annual_mean_2025.tif",
+   "size": 643663,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_annual_mean_2025.tif",
+   "kind": "annual_mean",
+   "period": "2025"
+  },
+  {
+   "name": "GH-PM25_1km_annual_mean_2026.tif",
+   "size": 428465,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_annual_mean_2026.tif",
+   "kind": "annual_mean",
+   "period": "2026"
+  },
+  {
+   "name": "GH-PM25_1km_daily_2024-08.zip",
+   "size": 47632525,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2024-08.zip",
+   "kind": "daily_month",
+   "period": "2024-08",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2024-09.zip",
+   "size": 51328044,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2024-09.zip",
+   "kind": "daily_month",
+   "period": "2024-09",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2024-10.zip",
+   "size": 51404833,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2024-10.zip",
+   "kind": "daily_month",
+   "period": "2024-10",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2024-11.zip",
+   "size": 52582991,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2024-11.zip",
+   "kind": "daily_month",
+   "period": "2024-11",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2024-12.zip",
+   "size": 57551604,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2024-12.zip",
+   "kind": "daily_month",
+   "period": "2024-12",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-01.zip",
+   "size": 57482664,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-01.zip",
+   "kind": "daily_month",
+   "period": "2025-01",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-02.zip",
+   "size": 51187462,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-02.zip",
+   "kind": "daily_month",
+   "period": "2025-02",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-03.zip",
+   "size": 54260248,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-03.zip",
+   "kind": "daily_month",
+   "period": "2025-03",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-04.zip",
+   "size": 52171277,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-04.zip",
+   "kind": "daily_month",
+   "period": "2025-04",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-05.zip",
+   "size": 52920407,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-05.zip",
+   "kind": "daily_month",
+   "period": "2025-05",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-06.zip",
+   "size": 50604029,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-06.zip",
+   "kind": "daily_month",
+   "period": "2025-06",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-07.zip",
+   "size": 52378638,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-07.zip",
+   "kind": "daily_month",
+   "period": "2025-07",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-08.zip",
+   "size": 53408616,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-08.zip",
+   "kind": "daily_month",
+   "period": "2025-08",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-09.zip",
+   "size": 50890683,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-09.zip",
+   "kind": "daily_month",
+   "period": "2025-09",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-10.zip",
+   "size": 52435593,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-10.zip",
+   "kind": "daily_month",
+   "period": "2025-10",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-11.zip",
+   "size": 52649682,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-11.zip",
+   "kind": "daily_month",
+   "period": "2025-11",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2025-12.zip",
+   "size": 55815631,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2025-12.zip",
+   "kind": "daily_month",
+   "period": "2025-12",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-01.zip",
+   "size": 57141074,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-01.zip",
+   "kind": "daily_month",
+   "period": "2026-01",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-02.zip",
+   "size": 51017967,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-02.zip",
+   "kind": "daily_month",
+   "period": "2026-02",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-03.zip",
+   "size": 54797376,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-03.zip",
+   "kind": "daily_month",
+   "period": "2026-03",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-04.zip",
+   "size": 52199253,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-04.zip",
+   "kind": "daily_month",
+   "period": "2026-04",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-05.zip",
+   "size": 52738654,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-05.zip",
+   "kind": "daily_month",
+   "period": "2026-05",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-06.zip",
+   "size": 49484313,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-06.zip",
+   "kind": "daily_month",
+   "period": "2026-06",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-07.zip",
+   "size": 51259820,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-07.zip",
+   "kind": "daily_month",
+   "period": "2026-07",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-08.zip",
+   "size": 52158718,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-08.zip",
+   "kind": "daily_month",
+   "period": "2026-08",
+   "days": null
+  },
+  {
+   "name": "GH-PM25_1km_daily_2026-09.zip",
+   "size": 33259205,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_daily_2026-09.zip",
+   "kind": "daily_month",
+   "period": "2026-09",
+   "days": 20
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2024-08.tif",
+   "size": 464828,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2024-08.tif",
+   "kind": "monthly_mean",
+   "period": "2024-08"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2024-09.tif",
+   "size": 505712,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2024-09.tif",
+   "kind": "monthly_mean",
+   "period": "2024-09"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2024-10.tif",
+   "size": 503912,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2024-10.tif",
+   "kind": "monthly_mean",
+   "period": "2024-10"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2024-11.tif",
+   "size": 482582,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2024-11.tif",
+   "kind": "monthly_mean",
+   "period": "2024-11"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2024-12.tif",
+   "size": 541082,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2024-12.tif",
+   "kind": "monthly_mean",
+   "period": "2024-12"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-01.tif",
+   "size": 538346,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-01.tif",
+   "kind": "monthly_mean",
+   "period": "2025-01"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-02.tif",
+   "size": 490604,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-02.tif",
+   "kind": "monthly_mean",
+   "period": "2025-02"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-03.tif",
+   "size": 527576,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-03.tif",
+   "kind": "monthly_mean",
+   "period": "2025-03"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-04.tif",
+   "size": 498972,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-04.tif",
+   "kind": "monthly_mean",
+   "period": "2025-04"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-05.tif",
+   "size": 527502,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-05.tif",
+   "kind": "monthly_mean",
+   "period": "2025-05"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-06.tif",
+   "size": 488186,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-06.tif",
+   "kind": "monthly_mean",
+   "period": "2025-06"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-07.tif",
+   "size": 523222,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-07.tif",
+   "kind": "monthly_mean",
+   "period": "2025-07"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-08.tif",
+   "size": 531258,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-08.tif",
+   "kind": "monthly_mean",
+   "period": "2025-08"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-09.tif",
+   "size": 491752,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-09.tif",
+   "kind": "monthly_mean",
+   "period": "2025-09"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-10.tif",
+   "size": 509792,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-10.tif",
+   "kind": "monthly_mean",
+   "period": "2025-10"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-11.tif",
+   "size": 484746,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-11.tif",
+   "kind": "monthly_mean",
+   "period": "2025-11"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2025-12.tif",
+   "size": 528888,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2025-12.tif",
+   "kind": "monthly_mean",
+   "period": "2025-12"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-01.tif",
+   "size": 538934,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-01.tif",
+   "kind": "monthly_mean",
+   "period": "2026-01"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-02.tif",
+   "size": 479058,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-02.tif",
+   "kind": "monthly_mean",
+   "period": "2026-02"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-03.tif",
+   "size": 523736,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-03.tif",
+   "kind": "monthly_mean",
+   "period": "2026-03"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-04.tif",
+   "size": 490542,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-04.tif",
+   "kind": "monthly_mean",
+   "period": "2026-04"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-05.tif",
+   "size": 515506,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-05.tif",
+   "kind": "monthly_mean",
+   "period": "2026-05"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-06.tif",
+   "size": 481480,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-06.tif",
+   "kind": "monthly_mean",
+   "period": "2026-06"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-07.tif",
+   "size": 502284,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-07.tif",
+   "kind": "monthly_mean",
+   "period": "2026-07"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-08.tif",
+   "size": 509862,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-08.tif",
+   "kind": "monthly_mean",
+   "period": "2026-08"
+  },
+  {
+   "name": "GH-PM25_1km_monthly_mean_2026-09.tif",
+   "size": 430372,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_1km_monthly_mean_2026-09.tif",
+   "kind": "monthly_mean",
+   "period": "2026-09"
+  },
+  {
+   "name": "GH-PM25_DATA_README.txt",
+   "size": 2097,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_DATA_README.txt",
+   "kind": "readme",
+   "period": ""
+  },
+  {
+   "name": "GH-PM25_region_daily_statistics.csv",
+   "size": 20945331,
+   "url": "https://github.com/alanhuang116/ghana-pm25/releases/download/data/GH-PM25_region_daily_statistics.csv",
+   "kind": "region_stats",
+   "period": "daily"
+  }
+ ]
+}
