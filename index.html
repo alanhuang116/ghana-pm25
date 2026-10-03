@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GH-PM25 · Ghana Air Quality Observatory</title>
+<meta name="description" content="Daily 1-km PM2.5 over Ghana from a hybrid machine-learning / geostatistical fusion of ground sensors, CAMS, MERRA-2 and VIIRS observations.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true" class="logo"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="11" cy="13" r="2.5" fill="currentColor"/><circle cx="20" cy="11" r="1.6" fill="currentColor"/><circle cx="19" cy="20" r="3.2" fill="currentColor"/><circle cx="10.5" cy="21" r="1.3" fill="currentColor"/></svg>
+    <div>
+      <div class="brand-title">GH-PM25 Observatory</div>
+      <div class="brand-sub">Daily 1-km fine particulate matter for Ghana</div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="monitor" aria-selected="true">Monitor</button>
+    <button role="tab" data-tab="stations">Stations</button>
+    <button role="tab" data-tab="exposure">Exposure &amp; trends</button>
+    <button role="tab" data-tab="validation">Model &amp; validation</button>
+    <button role="tab" data-tab="download">Download data</button>
+    <button role="tab" data-tab="methods">Data &amp; methods</button>
+  </nav>
+  <div class="top-right">
+    <span id="run-status" class="status-pill" title="Operational status">—</span>
+    <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme" title="Toggle light/dark">◐</button>
+  </div>
+</header>
+
+<main>
+<!-- ============================== MONITOR ============================== -->
+<section id="tab-monitor" class="tab active" role="tabpanel">
+  <div class="filter-row">
+    <div class="date-ctl">
+      <button class="icon-btn" id="d-prev" title="Previous day (←)">‹</button>
+      <input type="date" id="date-input" aria-label="Date">
+      <button class="icon-btn" id="d-next" title="Next day (→)">›</button>
+      <button class="btn" id="d-latest">Latest</button>
+      <button class="btn" id="d-play" title="Animate">▶ Play</button>
+      <span id="tier-badge" class="tier">—</span>
+    </div>
+    <label class="ctl">Layer
+      <select id="layer-select">
+        <option value="pm25">PM2.5 daily mean</option>
+        <option value="aqi">US EPA AQI category (2024)</option>
+        <option value="who">Exceedance: WHO 24-h guideline (15)</option>
+        <option value="gepa">Exceedance: Ghana EPA 24-h (35)</option>
+        <option value="lower">90% interval — lower bound</option>
+        <option value="upper">90% interval — upper bound</option>
+        <option value="relunc">Relative uncertainty (interval / mean)</option>
+        <option value="cams">CAMS global PM2.5 (input, 0.4°)</option>
+        <option value="diff">GH-PM25 − CAMS</option>
+      </select>
+    </label>
+    <label class="ctl">Boundaries
+      <select id="adm-select"><option value="1">Regions</option><option value="2">Districts</option><option value="0">National</option></select>
+    </label>
+    <label class="ctl chk"><input type="checkbox" id="chk-stations" checked> Stations</label>
+    <label class="ctl chk"><input type="checkbox" id="chk-aoa"> Mask outside AoA</label>
+    <label class="ctl">Opacity <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="0.85"></label>
+  </div>
+
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="kpi-label">Population-weighted PM2.5</div><div class="kpi-value" id="k-pw">—</div><div class="kpi-sub" id="k-pw-sub">µg/m³ · 90% interval</div></div>
+    <div class="kpi"><div class="kpi-label">Population above WHO 24-h (15)</div><div class="kpi-value" id="k-who">—</div><div class="kpi-sub">share of residents</div></div>
+    <div class="kpi"><div class="kpi-label">Population above Ghana EPA 24-h (35)</div><div class="kpi-value" id="k-gepa">—</div><div class="kpi-sub">share of residents</div></div>
+    <div class="kpi"><div class="kpi-label">Ground monitors assimilated</div><div class="kpi-value" id="k-obs">—</div><div class="kpi-sub" id="k-obs-sub">stations with valid daily mean</div></div>
+    <div class="kpi"><div class="kpi-label">Most affected region</div><div class="kpi-value small" id="k-top">—</div><div class="kpi-sub" id="k-top-sub">population-weighted</div></div>
+  </div>
+
+  <div class="monitor-grid">
+    <div class="map-wrap card">
+      <div id="map" aria-label="Map of daily PM2.5"></div>
+      <div class="legend" id="legend"></div>
+      <div class="readout" id="readout" hidden></div>
+      <div class="map-note" id="map-note"></div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <div class="card-head"><h3 id="ts-title">Location time series</h3><span class="muted" id="ts-sub">Click the map</span></div>
+        <div id="ts-chart" class="chart" style="height:220px"></div>
+        <details class="tableview"><summary>Table view</summary><div id="ts-table"></div></details>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Regions today</h3><span class="muted">sorted by population-weighted mean</span></div>
+        <div id="region-table" class="table-wrap"></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============================== STATIONS ============================== -->
+<section id="tab-stations" class="tab" role="tabpanel">
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>Ground monitoring network</h3><span class="muted" id="st-count"></span></div>
+      <div class="filter-row compact">
+        <label class="ctl">Country <select id="st-country"><option value="GH">Ghana</option><option value="all">All (training region)</option></select></label>
+        <label class="ctl">Network <select id="st-network"><option value="all">All networks</option></select></label>
+        <input type="search" id="st-search" placeholder="Search site…" class="search">
+      </div>
+      <div id="station-table" class="table-wrap tall"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3 id="st-title">Select a station</h3><span class="muted" id="st-sub"></span></div>
+      <div id="st-ts" class="chart" style="height:260px"></div>
+      <div class="legend-inline" id="st-legend"></div>
+      <div class="split">
+        <div><h4>Observed vs cross-validated prediction</h4><div id="st-scatter" class="chart" style="height:260px"></div></div>
+        <div><h4>Site statistics</h4><div id="st-stats"></div></div>
+      </div>
+      <details class="tableview"><summary>Table view</summary><div id="st-table"></div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== EXPOSURE ============================== -->
+<section id="tab-exposure" class="tab" role="tabpanel">
+  <div class="filter-row">
+    <label class="ctl">Unit <select id="ex-level"><option value="adm1">Regions (16)</option><option value="adm2">Districts (260)</option></select></label>
+    <label class="ctl">Area <select id="ex-area"></select></label>
+    <label class="ctl">Smoothing <select id="ex-smooth"><option value="1">Daily</option><option value="7" selected>7-day mean</option><option value="30">30-day mean</option></select></label>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3 id="ex-title">Population-weighted PM2.5</h3><span class="muted">µg/m³ with 90% interval · reference lines: WHO 15, Ghana EPA 35</span></div>
+      <div id="ex-ts" class="chart" style="height:300px"></div>
+      <details class="tableview"><summary>Table view</summary><div id="ex-table"></div></details>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Seasonal cycle</h3><span class="muted">monthly mean of daily population-weighted PM2.5</span></div>
+      <div id="ex-season" class="chart" style="height:300px"></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>Days above Ghana EPA 24-h standard (35 µg/m³)</h3><span class="muted">share of days per year, population-weighted mean</span></div>
+      <div id="ex-exceed" class="table-wrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>North–south gradient</h3><span class="muted">Northern regions (Northern, Savannah, North East, Upper East, Upper West) vs rest</span></div>
+      <div id="ex-ns" class="chart" style="height:260px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== VALIDATION ============================== -->
+<section id="tab-validation" class="tab" role="tabpanel">
+  <div class="filter-row">
+    <label class="ctl">Cross-validation scheme
+      <select id="cv-scheme">
+        <option value="cluster">Leave-city-cluster-out (strictest spatial)</option>
+        <option value="site">Leave-site-out</option>
+        <option value="temporal">Leave-month-out (temporal)</option>
+        <option value="random">Random 10-fold (optimistic)</option>
+      </select>
+    </label>
+    <label class="ctl">Evaluation subset
+      <select id="cv-subset">
+        <option value="all">All stations</option>
+        <option value="ghana">Ghana stations</option>
+        <option value="ghana_reference">Ghana reference (US Embassy BAM)</option>
+        <option value="reference_all">All reference monitors</option>
+        <option value="ghana_north(>8N)">Northern Ghana (&gt;8°N)</option>
+        <option value="ghana_south(<=8N)">Southern Ghana</option>
+        <option value="harmattan(DJF)">Harmattan (Dec–Feb)</option>
+        <option value="non_harmattan">Outside Harmattan</option>
+      </select>
+    </label>
+  </div>
+  <div class="kpis" id="cv-kpis"></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>Skill by model</h3><span class="muted">R² (higher is better) — baselines vs GH-PM25 stages</span></div>
+      <div id="cv-bars" class="chart" style="height:320px"></div>
+      <details class="tableview" open><summary>Table view</summary><div id="cv-table"></div></details>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Observed vs predicted</h3><span class="muted">GH-PM25 final product, density of station-days, log axes</span></div>
+      <div id="cv-scatter" class="chart" style="height:360px"></div>
+    </div>
+  </div>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-head"><h3>What drives the predictions</h3><span class="muted">mean |SHAP| (log-space), LightGBM member</span></div>
+      <div id="shap-bars" class="chart" style="height:420px"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Residual spatial correlation</h3><span class="muted">empirical correlogram and fitted exponential model</span></div>
+      <div id="corr-chart" class="chart" style="height:240px"></div>
+      <h4>Prediction-interval coverage</h4>
+      <div id="coverage-table" class="table-wrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Low-cost sensor calibration</h3><span class="muted">against co-located BAM-1020 (≤10 km), month-blocked CV</span></div>
+      <div id="cal-table" class="table-wrap"></div>
+      <h4>Feature-group ablation (leave-cluster-out)</h4>
+      <div id="abl-table" class="table-wrap"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Per-site accuracy</h3><span class="muted">leave-city-cluster-out, sites with ≥30 days</span></div>
+    <div id="site-metrics" class="table-wrap tall"></div>
+  </div>
+</section>
+
+<!-- ============================== DOWNLOAD ============================== -->
+<section id="tab-download" class="tab" role="tabpanel">
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>One day, full 1-km grid</h3><span class="muted">generated in your browser · no sign-up</span></div>
+      <div class="filter-row compact">
+        <label class="ctl" for="dl-date">Date <input type="date" id="dl-date"></label>
+        <span id="dl-tier" class="tier">—</span>
+      </div>
+      <div class="dl-buttons">
+        <button class="btn primary" id="dl-tif">Download GeoTIFF</button>
+        <button class="btn" id="dl-csv">Download CSV</button>
+      </div>
+      <p class="muted" id="dl-status" role="status"></p>
+      <table class="spec-table"><tbody>
+        <tr><th>GeoTIFF</th><td>3 bands, float32, EPSG:4326, 455 × 650 cells at 0.01° (≈1.1 km). Band 1 daily mean PM2.5, band 2 lower and band 3 upper bound of the 90% prediction interval, µg/m³. Cells outside Ghana are −9999 (nodata). Opens directly in QGIS, ArcGIS, R (terra) and Python (rasterio).</td></tr>
+        <tr><th>CSV</th><td>One row per land cell: <code>lat, lon, pm25, lower90, upper90, cams_pm25, inside_aoa</code>. About 195,000 rows.</td></tr>
+        <tr><th>Precision</th><td>These files are rebuilt from the portal's map encoding. The mean is exact to 0.1 µg/m³; interval bounds are exact to about 0.4% (lower) and 2.5% (upper) of the mean. For analysis-grade values use the NetCDF archive.</td></tr>
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Archive</h3><span class="muted" id="dl-archive-sub">permanent files on GitHub Releases</span></div>
+      <h4>Daily NetCDF-4 (CF-1.8), one zip per month</h4>
+      <div id="dl-months" class="table-wrap"></div>
+      <h4>Mean maps (GeoTIFF) and statistics</h4>
+      <div id="dl-aggregates" class="table-wrap"></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>NetCDF variables</h3><span class="muted">file <code>GH-PM25_1km_YYYYMMDD.nc</code></span></div>
+      <div class="table-wrap"><table><thead><tr><th>Variable</th><th>Units</th><th>Description</th></tr></thead><tbody>
+        <tr><td><code>pm25</code></td><td>µg m⁻³</td><td>Daily (00–24 UTC) mean PM2.5, GH-PM25 final product</td></tr>
+        <tr><td><code>pm25_lower90</code>, <code>pm25_upper90</code></td><td>µg m⁻³</td><td>Bounds of the 90% conformal prediction interval</td></tr>
+        <tr><td><code>pm25_stage1</code></td><td>µg m⁻³</td><td>Stage-1 ensemble prediction (before any geostatistical correction)</td></tr>
+        <tr><td><code>cams_pm25</code></td><td>µg m⁻³</td><td>CAMS global PM2.5 input, bilinearly interpolated</td></tr>
+        <tr><td><code>log_sigma</code></td><td>ln units</td><td>Predicted absolute log-error scale used for the interval</td></tr>
+        <tr><td><code>aoa_di</code>, <code>inside_aoa</code></td><td>–</td><td>Dissimilarity index and area-of-applicability flag (1 inside, 0 outside, −1 no data)</td></tr>
+      </tbody></table></div>
+      <p class="muted">Grid: regular latitude–longitude, cell centres from 3.295°W to 1.245°E and 11.195°N to 4.705°N. PM2.5 fields are stored as scaled int16 (scale factor 0.1).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Use in code</h3><span class="muted">Python example</span></div>
+<pre class="code">import io, zipfile, requests, xarray as xr
+url = "<span id="dl-example-url">…/GH-PM25_1km_daily_2026-01.zip</span>"
+z = zipfile.ZipFile(io.BytesIO(requests.get(url).content))
+z.extractall("gh-pm25")
+ds = xr.open_mfdataset("gh-pm25/**/*.nc", combine="nested", concat_dim="time")
+accra = ds.pm25.sel(lat=5.60, lon=-0.19, method="nearest").to_series()</pre>
+      <h4>Citation and attribution</h4>
+      <p class="muted" id="dl-cite">GH-PM25: daily 1-km PM2.5 for Ghana (version 1.0). Derived from OpenAQ, US Department of State AirNow, Copernicus CAMS, NASA MERRA-2/POWER, NOAA/NASA VIIRS, ESA WorldCover, Copernicus DEM, WorldPop, OpenStreetMap and geoBoundaries data. Please acknowledge these sources when using the product.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== METHODS ============================== -->
+<section id="tab-methods" class="tab" role="tabpanel">
+  <div class="prose card" id="methods-body"></div>
+</section>
+</main>
+
+<footer class="foot">
+  <span id="foot-version">GH-PM25</span> · Data: OpenAQ, US Department of State AirNow, CAMS (ECMWF/Copernicus via Open-Meteo), NASA POWER/MERRA-2, NOAA VIIRS, ESA WorldCover, Copernicus DEM, WorldPop, OpenStreetMap, geoBoundaries ·
+  <a href="report/GH-PM25_Technical_Report.html">Technical report</a>
+</footer>
+
+<div id="tooltip" class="tooltip" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="js/scales.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+<script src="js/download.js"></script>
+</body>
+</html>
