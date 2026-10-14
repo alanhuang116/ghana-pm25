@@ -21,6 +21,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+      TAHMO_USERNAME: ${{ secrets.TAHMO_USERNAME }}
+      TAHMO_PASSWORD: ${{ secrets.TAHMO_PASSWORD }}
       PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +46,13 @@ jobs:
 
       - name: Daily run (inputs, 1-km maps D-7..D+1, portal export)
         run: .venv/bin/python scripts/run_daily.py
+
+      - name: TAHMO weather stations for the Accra view (skipped without credentials)
+        if: env.TAHMO_USERNAME != ''
+        continue-on-error: true
+        run: |
+          .venv/bin/python scripts/12_tahmo_accra.py download --days 10
+          .venv/bin/python scripts/12_tahmo_accra.py export
 
       - name: Publish 1-km dataset to GitHub Releases
         run: .venv/bin/python scripts/08_package_release.py --recent 10 --upload

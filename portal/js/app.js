@@ -10,6 +10,8 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  const hooks = [];
+  const emit = (what) => hooks.forEach(h => { try { h(what); } catch (e) { console.error(e); } });
   const fetchJSON = (p) => fetch(`${DATA}/${p}`, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(p); return r.json(); });
   const isDark = () => document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
 
@@ -36,7 +38,9 @@
     initExposureTab();
     initValidationTab();
     renderMethods();
+    emit("ready");
     await setDate(m.latest);
+    openTabFromHash();
     setInterval(checkForUpdates, 10 * 60 * 1000);
   }
 
@@ -45,8 +49,15 @@
       document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b ? "true" : "false"));
       document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === `tab-${b.dataset.tab}`));
       if (b.dataset.tab === "monitor" && state.map) setTimeout(() => state.map.resize(), 50);
+      try { history.replaceState(null, "", b.dataset.tab === "monitor" ? location.pathname + location.search : `#${b.dataset.tab}`); } catch (e) { /* ignore */ }
       rerenderTab(b.dataset.tab);
+      emit(`tab:${b.dataset.tab}`);
     }));
+    window.addEventListener("hashchange", openTabFromHash);
+  }
+  function openTabFromHash() {
+    const b = document.querySelector(`.tabs button[data-tab="${location.hash.slice(1)}"]`);
+    if (b && b.getAttribute("aria-selected") !== "true") b.click();
   }
   function rerenderTab(tab) {
     if (tab === "exposure") renderExposure();
@@ -68,6 +79,7 @@
     const active = document.querySelector(".tabs button[aria-selected=true]").dataset.tab;
     if (active === "monitor") { renderSeriesPanel(); }
     rerenderTab(active);
+    emit("theme");
   }
 
   function renderStatus() {
@@ -215,13 +227,15 @@
       }
     }
     ctx.putImageData(img, 0, 0);
-    state.map.getSource("pm").updateImage({ url: state.canvas.toDataURL(), coordinates: [[g.lon0, g.lat1], [g.lon1, g.lat1], [g.lon1, g.lat0], [g.lon0, g.lat0]] });
+    state.imageUrl = state.canvas.toDataURL();
+    state.map.getSource("pm").updateImage({ url: state.imageUrl, coordinates: [[g.lon0, g.lat1], [g.lon1, g.lat1], [g.lon1, g.lat0], [g.lon0, g.lat0]] });
     renderLegend();
     updateStationsLayer();
+    emit("draw");
   }
 
-  function renderLegend() {
-    const L = state.layer, el = $("legend");
+  function renderLegend(el = $("legend")) {
+    const L = state.layer;
     const titles = { pm25: "PM2.5 daily mean (µg/m³)", lower: "90% lower bound (µg/m³)", upper: "90% upper bound (µg/m³)", cams: "CAMS PM2.5 (µg/m³)", relunc: "Relative 90% interval width", diff: "GH-PM25 − CAMS (µg/m³)" };
     if (L === "aqi") {
       el.innerHTML = `<div class="title">US EPA AQI category (PM2.5, 24-h)</div><div class="cats">` +
@@ -275,14 +289,16 @@
     if (!state.mapReady) return;
     const show = $("chk-stations").checked;
     state.map.setLayoutProperty("stations", "visibility", show ? "visible" : "none");
+    state.map.getSource("stations").setData({ type: "FeatureCollection", features: stationFeatures() });
+  }
+  function stationFeatures() {
     const obs = new Map((state.obsByDate.get(state.date) || []).map(o => [o.site_id, o]));
-    const feats = state.stations.map(s => {
+    return state.stations.map(s => {
       const o = obs.get(s.site_id);
       const col = o ? S.colorAt(S.PM_STOPS, o.pm25) : (isDark() ? "#6f6d67" : "#b9b7ae");
       return { type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] },
         properties: { site_id: s.site_id, name: s.name, ref: !!s.is_reference, has: !!o, obs: o ? o.pm25 : null, color: col } };
     });
-    state.map.getSource("stations").setData({ type: "FeatureCollection", features: feats });
   }
 
   /* ============================== date & KPIs ============================== */
@@ -339,6 +355,7 @@
     drawLayer();
     renderKPIs();
     renderRegionTable();
+    emit("date");
     const i = state.manifest.dates.indexOf(date);
     [i + 1, i - 1].forEach(k => { const d = state.manifest.dates[k]; if (d) getDay(d).catch(() => {}); });
     if (state.selPoint) renderSeriesPanel(true);
@@ -389,9 +406,9 @@
     return p;
   }
 
-  async function renderSeriesPanel(keepOnly) {
-    const p = state.selPoint;
-    if (!p) { C.timeSeries("#ts-chart", { series: [], emptyText: "Click anywhere on the map to plot the daily PM2.5 history of that location." }); return; }
+  const MAIN_TS = { chart: "ts-chart", title: "ts-title", sub: "ts-sub", table: "ts-table" };
+  async function renderSeriesPanel(keepOnly, ids = MAIN_TS, p = state.selPoint) {
+    if (!p) { C.timeSeries(`#${ids.chart}`, { series: [], emptyText: "Click anywhere on the map to plot the daily PM2.5 history of that location." }); return; }
     const years = [...new Set(state.manifest.dates.map(d => +d.slice(0, 4)))];
     const pts = [];
     for (const y of years) {
@@ -411,11 +428,11 @@
       const s = state.series[near.site_id];
       series.push({ name: `Observed · ${near.name}`, color: C.css("--series-2"), dots: true, points: s.date.map((d, i) => ({ date: new Date(d), value: s.pm25[i] })) });
     }
-    $("ts-title").textContent = p.station && near ? near.name : `${p.lat.toFixed(3)}°N, ${p.lng.toFixed(3)}°E`;
-    $("ts-sub").textContent = series.length > 1 ? "model vs nearest monitor" : "daily mean, µg/m³";
-    C.timeSeries("#ts-chart", { series, refLines: [{ y: 15, label: "WHO 15" }, { y: 35, label: "Ghana EPA 35" }], margin: { left: 36 } });
+    $(ids.title).textContent = p.station && near ? near.name : `${p.lat.toFixed(3)}°N, ${p.lng.toFixed(3)}°E`;
+    $(ids.sub).textContent = series.length > 1 ? "model vs nearest monitor" : "daily mean, µg/m³";
+    C.timeSeries(`#${ids.chart}`, { series, refLines: [{ y: 15, label: "WHO 15" }, { y: 35, label: "Ghana EPA 35" }], margin: { left: 36 } });
     const recent = pts.slice(-60);
-    $("ts-table").innerHTML = `<table><thead><tr><th>Date</th><th class="num">PM2.5</th></tr></thead><tbody>${recent.reverse().map(q => `<tr><td>${q.date.toISOString().slice(0, 10)}</td><td class="num">${C.fmt1(q.value)}</td></tr>`).join("")}</tbody></table>`;
+    $(ids.table).innerHTML = `<table><thead><tr><th>Date</th><th class="num">PM2.5</th></tr></thead><tbody>${recent.reverse().map(q => `<tr><td>${q.date.toISOString().slice(0, 10)}</td><td class="num">${C.fmt1(q.value)}</td></tr>`).join("")}</tbody></table>`;
   }
 
   /* ============================== stations tab ============================== */
@@ -667,6 +684,9 @@
       ${a(450, 150, 500, 60)}${a(600, 100, 600, 120)}${a(600, 190, 600, 210)}${a(700, 155, 760, 150)}${a(700, 250, 760, 165)}
       ${a(110, 90, 110, 90)}</svg>`;
   }
+
+  window.GHApp = { state, $, fetchJSON, isDark, basemapTiles, cellAt, setDate, stepDate, nearestDate, drawLayer, renderLegend,
+    stationFeatures, renderSeriesPanel, smooth, on: (fn) => hooks.push(fn) };
 
   init();
 })();

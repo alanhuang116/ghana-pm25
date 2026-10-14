@@ -109,7 +109,8 @@ input[type="range"] { width: 90px; accent-color: var(--accent); }
 
 /* ---------- map ---------- */
 .map-wrap { position: relative; padding: 0; overflow: hidden; }
-#map { height: min(76vh, 820px); min-height: 460px; width: 100%; }
+#map, #map-accra { height: min(76vh, 820px); min-height: 460px; width: 100%; }
+@media (max-width: 640px) { #map, #map-accra { min-height: 360px; height: 60vh; } }
 .legend { position: absolute; left: 12px; bottom: 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; max-width: calc(100% - 24px); box-shadow: var(--shadow); }
 .legend .ramp { height: 10px; width: 300px; max-width: 100%; border-radius: 2px; }
 .legend .ticks { position: relative; height: 14px; width: 300px; max-width: 100%; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -156,6 +157,9 @@ tr.highlight td { font-weight: 600; }
 .tooltip .t-title { font-weight: 600; margin-bottom: 3px; }
 .tooltip .t-row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
 .tooltip .t-key { color: var(--text-secondary); }
+.exp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 1200px) { .exp-grid { grid-template-columns: minmax(0, 1fr); } }
+.note { color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; margin: 4px 0 0; }
 .empty { color: var(--text-muted); font-size: 12.5px; padding: 30px 0; text-align: center; }
 
 /* ---------- download ---------- */

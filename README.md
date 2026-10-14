@@ -85,6 +85,27 @@ Each day in the portal is tagged with one of these product tiers:
 
 To schedule the run on Windows, use `scripts/schedule_windows_task.ps1`. To schedule it in the cloud, use `.github/workflows/daily.yml` (GitHub Actions, which also publishes to GitHub Pages).
 
+## Accra view and TAHMO weather stations
+
+The portal's **Accra** tab (`#accra`) shows Greater Accra at full 1-km detail: district statistics, the city's PM2.5 monitors, Greater Accra against the national mean, and daily weather from TAHMO automatic weather stations.
+
+TAHMO data needs an account. The code reads the login only from the environment, never from files in the repository:
+
+1. Add the repository secrets `TAHMO_USERNAME` and `TAHMO_PASSWORD` (Settings → Secrets and variables → Actions). For local runs, set the same environment variables or put them in a git-ignored `.env` file.
+2. Run **Actions → TAHMO Accra experiments → Run workflow**. It downloads the stations in the Accra area and runs the experiments in `scripts/12_tahmo_accra.py`:
+   * **E1:** how far the model's MERRA-2 weather is from measured weather in Accra;
+   * **E2:** whether measured humidity improves the low-cost sensor calibration against the US Embassy BAM-1020;
+   * **E3:** whether local weather improves the PM2.5 model for Accra.
+
+   Results are committed to `report/tahmo/`.
+3. From then on, the daily job refreshes the last 10 days of TAHMO data and publishes them, with the experiment results, to the Accra tab. Without the secrets, that step is skipped.
+
+```powershell
+.venv\Scripts\python.exe scripts\12_tahmo_accra.py download            # needs TAHMO_USERNAME / TAHMO_PASSWORD
+.venv\Scripts\python.exe scripts\12_tahmo_accra.py experiments [--quick]
+.venv\Scripts\python.exe scripts\12_tahmo_accra.py export              # portal/data/accra/tahmo.json
+```
+
 ## Repository layout
 
 ```
