@@ -44,7 +44,7 @@ VARIABLES = {
     "wd": ("wd", "circmean"),     # wind direction, degrees
     "wg": ("wgust", "max"),       # wind gust, m/s
     "ap": ("ps", "mean"),         # atmospheric pressure, kPa
-    "ra": ("ssrd", "mean"),       # shortwave radiation, W/m2 -> MJ/m2/day
+    "ra": ("ssrd", "mean"),       # shortwave radiation, W/m2 -> kWh/m2/day
     "vp": ("vp", "mean"),         # vapour pressure, kPa
 }
 SAMPLES_PER_DAY = 288  # 5-min
@@ -214,8 +214,8 @@ def daily(m: pd.DataFrame) -> pd.DataFrame:
     d = pd.concat(out, axis=1).reset_index()
     if "rh" in d and d.rh.median() <= 1.5:   # fraction -> percent
         d["rh"] = d.rh * 100.0
-    if "ssrd" in d:                          # W/m2 daily mean -> MJ/m2/day (as NASA POWER)
-        d["ssrd"] = d.ssrd * 0.0864
+    if "ssrd" in d:                          # W/m2 daily mean -> kWh/m2/day (as NASA POWER community RE and nrt.py)
+        d["ssrd"] = d.ssrd * 24 / 1000.0
     if {"ws10", "wd"} <= set(d.columns):
         rad = np.deg2rad(d.wd)
         d["u10"], d["v10"] = -d.ws10 * np.sin(rad), -d.ws10 * np.cos(rad)
