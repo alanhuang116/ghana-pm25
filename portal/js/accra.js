@@ -223,7 +223,12 @@
       $("a-wx-chart").innerHTML = `<div class="empty">No weather-station data published yet. It appears here after the TAHMO download runs with the project's credentials.</div>`;
       return;
     }
-    $("a-wx-station").innerHTML = T.stations.map(s => `<option value="${s.code}">${s.name} (${s.code})</option>`).join("");
+    // stations that stopped reporting are labelled; the default is the most recent one nearest the city centre
+    const last = s => { const d = (T.series[s.code] || {}).date || []; return d.length ? d[d.length - 1] : ""; };
+    const latest = d3.max(T.stations, last), old = s => (new Date(latest) - new Date(last(s) || 0)) / 864e5 > 30;
+    $("a-wx-station").innerHTML = T.stations.map(s => `<option value="${s.code}">${s.name} (${s.code})${old(s) ? ` · until ${last(s) || "n/a"}` : ""}</option>`).join("");
+    const dist = s => Math.hypot(s.lat - 5.60, (s.lon + 0.19) * Math.cos(5.6 * Math.PI / 180));  // to the centre used in scripts/12_tahmo_accra.py
+    $("a-wx-station").value = T.stations.filter(s => !old(s)).sort((a, b) => dist(a) - dist(b)).concat(T.stations)[0].code;
     $("a-wx-station").onchange = renderWeather; $("a-wx-var").onchange = renderWeather;
     $("a-wx-sub").textContent = `${T.stations.length} TAHMO station${T.stations.length > 1 ? "s" : ""} · daily, updated ${T.generated_at.slice(0, 10)}`;
     renderWeather();

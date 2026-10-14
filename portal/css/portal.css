@@ -158,6 +158,8 @@ tr.highlight td { font-weight: 600; }
 .tooltip .t-row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
 .tooltip .t-key { color: var(--text-secondary); }
 .exp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+#a-wx-station { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+.ctl:has(#a-wx-station) { min-width: 0; max-width: 100%; }
 @media (max-width: 1200px) { .exp-grid { grid-template-columns: minmax(0, 1fr); } }
 .note { color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; margin: 4px 0 0; }
 .empty { color: var(--text-muted); font-size: 12.5px; padding: 30px 0; text-align: center; }
