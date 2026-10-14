@@ -248,7 +248,7 @@
       <div><h4>Sensor calibration: humidity source</h4><div id="a-exp-cal" class="table-wrap"></div></div>
       <div><h4>PM2.5 model in Accra</h4><div id="a-exp-model" class="table-wrap"></div></div></div>
       <p class="note">Errors are cross-validated. Full tables: <code>report/tahmo/TAHMO_Accra_Experiments.md</code> in the repository.</p>`;
-    const lab = { t2m: "Temperature (°C)", t2m_range: "Daily range (°C)", rh: "Humidity (%)", precip: "Rain (mm)", ws10: "Wind (m/s)", ps: "Pressure (kPa)", ssrd: "Radiation (MJ/m²)" };
+    const lab = { t2m: "Temperature (°C)", t2m_range: "Daily range (°C)", rh: "Humidity (%)", precip: "Rain (mm)", ws10: "Wind (m/s)", ps: "Pressure (kPa)", ssrd: "Radiation (kWh/m² per day)" };
     C.table("#a-exp-wx", [{ key: "variable", label: "Variable", fmt: v => lab[v] || v }, { key: "merra_bias", label: "Bias", num: true, fmt: C.fmt2 },
       { key: "merra_rmse", label: "RMSE", num: true, fmt: C.fmt2 }, { key: "merra_r", label: "r", num: true, fmt: C.fmt2 }, { key: "n", label: "Days", num: true }], E.weather_bias || []);
     C.table("#a-exp-cal", [{ key: "network", label: "Sensors" }, { key: "humidity", label: "Humidity" }, { key: "correction", label: "Correction" },
