@@ -7,6 +7,7 @@
   const state = {
     manifest: null, date: null, day: null, dayCache: new Map(), layer: "pm25", stations: [], series: {}, regions: null,
     cubes: new Map(), map: null, playing: null, selPoint: null, validation: null, obsByDate: new Map(), themeDark: false,
+    scope: "ghana", cellMask: null, stretch: null,   // Greater Accra view: grid cells shown, and the colour range used
   };
 
   const $ = (id) => document.getElementById(id);
@@ -49,15 +50,34 @@
       document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b ? "true" : "false"));
       document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === `tab-${b.dataset.tab}`));
       if (b.dataset.tab === "monitor" && state.map) setTimeout(() => state.map.resize(), 50);
-      try { history.replaceState(null, "", b.dataset.tab === "monitor" ? location.pathname + location.search : `#${b.dataset.tab}`); } catch (e) { /* ignore */ }
+      setHash(b.dataset.tab === "monitor" ? (state.scope === "accra" ? "accra" : "") : b.dataset.tab);
       rerenderTab(b.dataset.tab);
       emit(`tab:${b.dataset.tab}`);
     }));
     window.addEventListener("hashchange", openTabFromHash);
   }
+  function setHash(h) { try { history.replaceState(null, "", h ? `#${h}` : location.pathname + location.search); } catch (e) { /* ignore */ } }
   function openTabFromHash() {
-    const b = document.querySelector(`.tabs button[data-tab="${location.hash.slice(1)}"]`);
+    const h = location.hash.slice(1);
+    const b = document.querySelector(`.tabs button[data-tab="${h === "accra" ? "monitor" : h}"]`);
     if (b && b.getAttribute("aria-selected") !== "true") b.click();
+    if (h === "accra" && state.scope !== "accra") setScope("accra");
+    if (h === "" && state.scope !== "ghana") setScope("ghana");
+  }
+
+  /* Ghana / Greater Accra: one map; accra.js crops it to Greater Accra and adds the city panels */
+  function setScope(scope) {
+    state.scope = scope;
+    document.querySelectorAll(".seg button[data-scope]").forEach(x => x.setAttribute("aria-pressed", x.dataset.scope === scope ? "true" : "false"));
+    $("tab-monitor").classList.toggle("accra", scope === "accra");
+    if ($("tab-monitor").classList.contains("active")) setHash(scope === "accra" ? "accra" : "");
+    if (scope === "ghana") {
+      state.cellMask = null;
+      if (state.mapReady) { const g = state.manifest.grid; state.map.fitBounds([[g.lon0 - 0.3, g.lat1 - 6.8], [g.lon0 + 4.85, g.lat1 + 0.3]], { padding: 10, duration: 600 }); }
+    }
+    emit("scope");   // accra.js sets the crop mask and redraws, or removes its layers
+    if (scope === "ghana") drawLayer();
+    setTimeout(() => { if (state.map) state.map.resize(); renderSeriesPanel(); }, 50);
   }
   function rerenderTab(tab) {
     if (tab === "exposure") renderExposure();
@@ -130,6 +150,8 @@
     window.__ghmap = map;  // exposed for automated QA
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+    // a redraw while the previous image is still loading cancels that load; nothing is lost
+    map.on("error", (e) => { if (!(e.error && e.error.name === "AbortError")) console.error(e.error || e); });
     map.on("load", async () => {
       map.addSource("base", { type: "raster", tiles: basemapTiles("nolabels"), tileSize: 256, maxzoom: 16, attribution: "Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors" });
       map.addLayer({ id: "base", type: "raster", source: "base" });
@@ -158,6 +180,7 @@
       map.on("mouseleave", "stations", () => map.getCanvas().style.cursor = "");
       state.mapReady = true;
       drawLayer();
+      emit("map");
       map.once("idle", () => console.log("[ghpm25] idle; rendered stations:", map.queryRenderedFeatures({ layers: ["stations"] }).length,
         "adm1 lines:", map.queryRenderedFeatures({ layers: ["adm1-line"] }).length));
     });
@@ -183,9 +206,29 @@
     return NaN;
   }
 
+  // Layers whose colours can be stretched to the range inside Greater Accra (the categorical ones keep their thresholds)
+  const STRETCH = ["pm25", "lower", "upper", "cams", "relunc", "diff"];
+  function stretchRange(mask) {
+    const v = [];
+    for (let i = 0; i < mask.length; i++) if (mask[i] && state.day.code[i] !== 0) { const x = layerValue(i); if (Number.isFinite(x)) v.push(x); }
+    if (v.length < 2) return null;
+    v.sort((a, b) => a - b);
+    let lo = d3.quantileSorted(v, 0.02), hi = d3.quantileSorted(v, 0.98);
+    if (state.layer === "diff") { const m = Math.max(Math.abs(lo), Math.abs(hi), 0.5); lo = -m; hi = m; }   // keep 0 at the neutral midpoint
+    if (hi - lo < 0.5) { const c = (lo + hi) / 2; lo = c - 0.25; hi = c + 0.25; }
+    return { lo, hi };
+  }
+
   function colorFor(v) {
     const L = state.layer;
     if (!Number.isFinite(v)) return null;
+    if (state.stretch) {
+      const stops = L === "relunc" ? S.UNC_STOPS : L === "diff" ? S.DIFF_STOPS : S.PM_STOPS;
+      const lut = state.lut && state.lutStops === stops ? state.lut : (state.lut = buildPosLUT(stops), state.lutStops = stops, state.lut);
+      const t = Math.max(0, Math.min(1, (v - state.stretch.lo) / (state.stretch.hi - state.stretch.lo)));
+      const k = Math.round(t * 1023) * 3;
+      return [lut[k], lut[k + 1], lut[k + 2]];
+    }
     if (L === "aqi") return S.hexToRgb(S.aqiCategory(v).color);
     if (L === "who") return v > 15 ? [217, 80, 47] : [205, 226, 251];
     if (L === "gepa") return v > 35 ? [134, 30, 59] : [205, 226, 251];
@@ -213,14 +256,15 @@
     // row-wise reprojection from the regular lat grid to Web Mercator rows
     const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
     const y0 = merc(g.lat1), y1 = merc(g.lat0);
-    const maskAoa = $("chk-aoa").checked;
+    const maskAoa = $("chk-aoa").checked && state.scope === "ghana", mask = state.cellMask;
+    state.stretch = mask && STRETCH.includes(state.layer) && $("color-mode").value === "city" ? stretchRange(mask) : null;
     for (let r = 0; r < d.h; r++) {
       const ym = y0 + (y1 - y0) * (r + 0.5) / d.h;
       const lat = (2 * Math.atan(Math.exp(ym)) - Math.PI / 2) * 180 / Math.PI;
       const sr = Math.min(d.h - 1, Math.max(0, Math.floor((g.lat1 - lat) / g.res)));
       for (let c = 0; c < d.w; c++) {
         const i = sr * d.w + c, o = (r * d.w + c) * 4;
-        if (d.code[i] === 0 || (maskAoa && d.code[i] === 1)) { img.data[o + 3] = 0; continue; }
+        if (d.code[i] === 0 || (maskAoa && d.code[i] === 1) || (mask && !mask[i])) { img.data[o + 3] = 0; continue; }
         const col = colorFor(layerValue(i));
         if (!col) { img.data[o + 3] = 0; continue; }
         img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
@@ -249,6 +293,13 @@
     }
     const stops = L === "relunc" ? S.UNC_STOPS : L === "diff" ? S.DIFF_STOPS : S.PM_STOPS;
     const grad = stops.map((s, i) => `${s[1]} ${(i / (stops.length - 1) * 100).toFixed(1)}%`).join(",");
+    if (state.stretch) {
+      const { lo, hi } = state.stretch, f = L === "relunc" ? d3.format(".2f") : d3.format(".1f");
+      const ticks = d3.range(5).map(k => `<span style="left:${k * 25}%${k === 0 ? ";transform:none" : k === 4 ? ";transform:translateX(-100%)" : ""}">${f(lo + (hi - lo) * k / 4)}</span>`).join("");
+      el.innerHTML = `<div class="title">${titles[L]}</div><div class="ramp" style="background:linear-gradient(90deg,${grad})"></div><div class="ticks">${ticks}</div>
+        <div class="sub">Stretched to Greater Accra today (2nd–98th percentile), so not comparable with the Ghana view.</div>`;
+      return;
+    }
     const ticks = stops.map((s, i) => `<span style="left:${(i / (stops.length - 1) * 100).toFixed(1)}%">${s[0]}</span>`).join("");
     el.innerHTML = `<div class="title">${titles[L]}</div><div class="ramp" style="background:linear-gradient(90deg,${grad})"></div><div class="ticks">${ticks}</div>`;
   }
@@ -264,7 +315,7 @@
     const d = state.day; if (!d) return;
     const i = cellAt(e.lngLat.lng, e.lngLat.lat);
     const ro = $("readout");
-    if (i < 0 || d.code[i] === 0) { ro.hidden = true; return; }
+    if (i < 0 || d.code[i] === 0 || (state.cellMask && !state.cellMask[i])) { ro.hidden = true; return; }
     const pm = d.pm[i], cat = S.aqiCategory(pm);
     const f = state.map.queryRenderedFeatures(e.point, { layers: ["adm2-fill", "adm1-fill"].filter(l => state.map.getLayer(l)) });
     const dist = f.find(x => x.layer.id === "adm2-fill"), reg = f.find(x => x.layer.id === "adm1-fill");
@@ -314,6 +365,8 @@
     $("opacity").oninput = (e) => state.mapReady && state.map.setPaintProperty("pm", "raster-opacity", +e.target.value);
     $("chk-stations").onchange = updateStationsLayer;
     $("chk-aoa").onchange = drawLayer;
+    $("color-mode").onchange = drawLayer;
+    document.querySelectorAll(".seg button[data-scope]").forEach(b => b.onclick = () => { if (state.scope !== b.dataset.scope) setScope(b.dataset.scope); });
     $("adm-select").onchange = (e) => { for (const l of [1, 2]) if (state.map.getLayer(`adm${l}-line`)) state.map.setLayoutProperty(`adm${l}-line`, "visibility", String(l) === e.target.value ? "visible" : "none"); };
     document.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -686,7 +739,7 @@
   }
 
   window.GHApp = { state, $, fetchJSON, isDark, basemapTiles, cellAt, setDate, stepDate, nearestDate, drawLayer, renderLegend,
-    stationFeatures, renderSeriesPanel, smooth, on: (fn) => hooks.push(fn) };
+    stationFeatures, renderSeriesPanel, smooth, layerValue, setScope, on: (fn) => hooks.push(fn) };
 
   init();
 })();

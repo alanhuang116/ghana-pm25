@@ -1,4 +1,6 @@
-/* GH-PM25 Observatory - Accra city view (Greater Accra Region at full 1-km detail, plus TAHMO weather stations) */
+/* GH-PM25 Observatory - Greater Accra view of the Monitor map.
+   Crops the 1-km grid to Greater Accra Region (app.js stretches the colours to the range inside it), and adds
+   district statistics, TAHMO weather-station values on the map, local weather and the TAHMO experiment results. */
 (function () {
   "use strict";
   const S = window.GHScales, C = window.GHCharts, A = window.GHApp;
@@ -6,19 +8,22 @@
   const REGION = "Greater Accra Region";
   const VIEW = [[-0.52, 5.47], [0.72, 6.10]];   // Greater Accra extent
   const WX = { rh: ["Relative humidity", "%"], t2m: ["Air temperature", "°C"], precip: ["Rainfall", "mm/day"], ws10: ["Wind speed (≈2 m)", "m/s"] };
-  const acc = { map: null, ready: false, sel: null, districts: [], adm1: -1, tahmo: null, built: false };
-  const TS_IDS = { chart: "a-ts-chart", title: "a-ts-title", sub: "a-ts-sub", table: "a-ts-table" };
+  const PIN = { t2m: v => `${C.fmt1(v)}°`, rh: v => `${Math.round(v)}%`, precip: v => `${C.fmt1(v)} mm`, ws10: v => `${C.fmt1(v)} m/s` };
+  // one-hue sequential ramp from the portal palette; dark mode runs dark -> light on the dark surface
+  const BLUES_LIGHT = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"];
+  const BLUES_DARK = ["#184f95", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4", "#cde2fb"];
+  const acc = { districts: [], adm1: -1, tahmo: null, mask: null, pins: [], panels: false, layers: false, active: false };
 
-  A.on(async (what) => {
-    if (what === "ready") acc.prepared = prepare();
-    if (what === "tab:accra") { await acc.prepared; build(); }
-    if (!acc.built) return;
-    if (what === "draw") { updateImage(); A.renderLegend($("a-legend")); updateStations(); $("a-layer").value = state.layer; }
-    if (what === "date") { syncDate(); renderKPIs(); renderDistricts(); if (acc.sel) A.renderSeriesPanel(true, TS_IDS, acc.sel); }
-    if (what === "theme") { setBasemap(); renderWeather(); renderTrend(); }
+  A.on((what) => {
+    if (what === "ready") { acc.prepared = prepare(); initControls(); }
+    if (what === "scope" || what === "map") state.scope === "accra" ? enter() : leave();
+    if (!acc.active) return;
+    if (what === "date") { renderKPIs(); renderDistricts(); renderPins(); }
+    if (what === "theme") { setOutsideColour(); renderPins(); renderWeather(); renderTrend(); }
+    if (what === "tab:monitor") setTimeout(() => { renderWeather(); renderTrend(); }, 60);
   });
 
-  /* ---------- data that does not need the map ---------- */
+  /* ---------- data and the Greater Accra cell mask ---------- */
   async function prepare() {
     const R = state.regions;
     if (R) acc.adm1 = R.adm1.names.indexOf(REGION);
@@ -28,150 +33,165 @@
     acc.tahmo = tahmo;
     const ga = adm1 && adm1.features.find(f => f.properties.name === REGION);
     acc.gaFeature = ga;
-    if (ga && adm2 && R) {
+    if (!ga) return;
+    acc.mask = rasterMask(ga.geometry, state.manifest.grid);
+    if (adm2 && R) {
       const inGA = adm2.features.filter(f => d3.geoContains(ga, d3.geoCentroid(f)));
       acc.adm2 = { type: "FeatureCollection", features: inGA };
       acc.districts = inGA.map(f => ({ name: f.properties.name, k: R.adm2.names.indexOf(f.properties.name) })).filter(d => d.k >= 0);
     }
   }
 
-  /* ---------- build the tab on first open (the map needs a visible container) ---------- */
-  function build() {
-    if (acc.built) { setTimeout(() => acc.map && acc.map.resize(), 50); return; }
-    if (!state.manifest) return;
-    acc.built = true;
-    initControls();
-    initMap();
-    syncDate(); renderKPIs(); renderDistricts(); initWeather(); renderTrend(); renderExperiments();
-    A.renderSeriesPanel(false, TS_IDS, null);
-    A.renderLegend($("a-legend"));
+  // 1 for grid cells whose centre lies inside the polygon (scanline, even-odd over all rings)
+  function rasterMask(geom, g) {
+    const m = new Uint8Array(g.w * g.h);
+    const rings = (geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates).flat();
+    const lats = rings.flat().map(p => p[1]);
+    const r0 = Math.max(0, Math.floor((g.lat1 - d3.max(lats)) / g.res)), r1 = Math.min(g.h - 1, Math.ceil((g.lat1 - d3.min(lats)) / g.res));
+    for (let r = r0; r <= r1; r++) {
+      const y = g.lat1 - (r + 0.5) * g.res, xs = [];
+      for (const ring of rings) for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > y) !== (yj > y)) xs.push(xi + (y - yi) * (xj - xi) / (yj - yi));
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const c0 = Math.max(0, Math.ceil((xs[k] - g.lon0) / g.res - 0.5)), c1 = Math.min(g.w - 1, Math.floor((xs[k + 1] - g.lon0) / g.res - 0.5));
+        for (let c = c0; c <= c1; c++) m[r * g.w + c] = 1;
+      }
+    }
+    return m;
   }
 
   function initControls() {
-    const m = state.manifest, di = $("a-date");
-    di.min = m.dates[0]; di.max = m.dates[m.dates.length - 1];
-    di.onchange = () => A.setDate(A.nearestDate(di.value));
-    $("a-prev").onclick = () => A.stepDate(-1);
-    $("a-next").onclick = () => A.stepDate(1);
-    $("a-latest").onclick = () => A.setDate(m.latest);
-    $("a-layer").value = ["pm25", "aqi", "who", "gepa", "relunc", "diff"].includes(state.layer) ? state.layer : "pm25";
-    $("a-layer").onchange = (e) => { state.layer = e.target.value; $("layer-select").value = state.layer; A.drawLayer(); };
-    $("a-opacity").oninput = (e) => acc.ready && acc.map.setPaintProperty("pm", "raster-opacity", +e.target.value);
-    $("a-chk-stations").onchange = updateStations;
-    $("a-chk-tahmo").onchange = () => acc.ready && acc.map.getLayer("tahmo") && acc.map.setLayoutProperty("tahmo", "visibility", $("a-chk-tahmo").checked ? "visible" : "none");
-    window.addEventListener("resize", () => { if ($("tab-accra").classList.contains("active")) { renderWeather(); renderTrend(); } });
+    $("wx-map-var").onchange = () => {
+      const v = $("wx-map-var").value;
+      if (v) { $("a-wx-var").value = v; renderWeather(); }
+      renderPins();
+    };
+    $("a-wx-var").value = $("wx-map-var").value || "t2m";
   }
 
-  function syncDate() {
-    $("a-date").value = state.date || "";
-    const t = (state.manifest.tiers || {})[state.date] || "final";
-    $("a-tier").textContent = t;
+  /* ---------- entering and leaving the Greater Accra view ---------- */
+  async function enter() {
+    await acc.prepared;
+    if (state.scope !== "accra" || !state.mapReady || !acc.mask) return;
+    const map = state.map, first = !acc.active;
+    acc.active = true;
+    state.cellMask = acc.mask;
+    addLayers(); setOutsideColour();   // the theme may have changed while the Ghana view was open
+    for (const l of ["ga-outside", "ga-line"]) map.setLayoutProperty(l, "visibility", "visible");
+    for (const l of [1, 2]) if (map.getLayer(`adm${l}-line`)) map.setLayoutProperty(`adm${l}-line`, "visibility", l === 2 ? "visible" : "none");
+    if (first) fitView();
+    A.drawLayer();
+    if (!acc.panels) { acc.panels = true; initWeather(); renderExperiments(); }
+    renderKPIs(); renderDistricts(); renderPins();
+    setTimeout(() => { renderWeather(); renderTrend(); }, 60);
+  }
+  // fit Greater Accra above the legends in the lower-left corner
+  function fitView() {
+    renderPins();
+    const h = document.querySelector(".legend-stack").offsetHeight, H = state.map.getContainer().clientHeight;
+    state.map.fitBounds(VIEW, { padding: { top: 20, right: 20, left: 20, bottom: Math.min(h + 16, H * 0.45) }, duration: 600 });
+  }
+  function leave() {
+    if (!acc.active) return;
+    acc.active = false;
+    state.cellMask = null;
+    const map = state.map;
+    for (const l of ["ga-outside", "ga-line"]) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", "none");
+    const lvl = $("adm-select").value;
+    for (const l of [1, 2]) if (map.getLayer(`adm${l}-line`)) map.setLayoutProperty(`adm${l}-line`, "visibility", String(l) === lvl ? "visible" : "none");
+    clearPins();
+    $("wx-legend").hidden = true;
   }
 
-  /* ---------- map ---------- */
-  function initMap() {
-    const g = state.manifest.grid;
-    const map = new maplibregl.Map({ container: "map-accra", attributionControl: { compact: true }, style: { version: 8, sources: {}, layers: [] },
-      bounds: VIEW, fitBoundsOptions: { padding: 10 }, maxZoom: 14, minZoom: 8 });
-    acc.map = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
-    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
-    map.on("load", () => {
-      map.addSource("base", { type: "raster", tiles: A.basemapTiles("nolabels"), tileSize: 256, maxzoom: 16, attribution: "Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors" });
-      map.addLayer({ id: "base", type: "raster", source: "base" });
-      const blank = document.createElement("canvas"); blank.width = 2; blank.height = 2;
-      map.addSource("pm", { type: "image", url: state.imageUrl || blank.toDataURL(), coordinates: [[g.lon0, g.lat1], [g.lon1, g.lat1], [g.lon1, g.lat0], [g.lon0, g.lat0]] });
-      map.addLayer({ id: "pm", type: "raster", source: "pm", paint: { "raster-opacity": +$("a-opacity").value, "raster-resampling": "nearest", "raster-fade-duration": 0 } });
-      map.addSource("labels", { type: "raster", tiles: A.basemapTiles("only_labels"), tileSize: 256 });
-      map.addLayer({ id: "labels", type: "raster", source: "labels" });
-      const line = A.isDark() ? "#d9d8d2" : "#3d3c39";
-      if (acc.adm2) {
-        map.addSource("districts", { type: "geojson", data: acc.adm2 });
-        map.addLayer({ id: "districts-fill", type: "fill", source: "districts", paint: { "fill-opacity": 0 } });
-        map.addLayer({ id: "districts-line", type: "line", source: "districts", paint: { "line-color": line, "line-width": 0.7, "line-opacity": 0.7 } });
-      }
-      if (acc.gaFeature) {
-        map.addSource("region", { type: "geojson", data: acc.gaFeature });
-        map.addLayer({ id: "region-line", type: "line", source: "region", paint: { "line-color": line, "line-width": 1.6 } });
-      }
-      map.addSource("stations", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      map.addLayer({ id: "stations", type: "circle", source: "stations", paint: {
-        "circle-radius": ["case", ["get", "ref"], 8, 5.5], "circle-color": ["get", "color"], "circle-stroke-color": A.isDark() ? "#1a1a19" : "#ffffff",
-        "circle-stroke-width": 2, "circle-opacity": ["case", ["get", "has"], 1, 0.35] } });
-      if (acc.tahmo) {
-        map.addSource("tahmo", { type: "geojson", data: { type: "FeatureCollection", features: acc.tahmo.stations.map(s => ({
-          type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] }, properties: { code: s.code, name: s.name } })) } });
-        map.addLayer({ id: "tahmo", type: "circle", source: "tahmo", paint: { "circle-radius": 6, "circle-color": A.isDark() ? "#1a1a19" : "#ffffff",
-          "circle-stroke-color": C.css("--series-3"), "circle-stroke-width": 3 } });
-      }
-      map.on("mousemove", onMove);
-      map.on("mouseout", () => { $("a-readout").hidden = true; });
-      map.on("click", onClick);
-      for (const l of ["stations", "tahmo"]) {
-        map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
-        map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
-      }
-      acc.ready = true;
-      updateImage(); updateStations();
-    });
+  function addLayers() {
+    if (acc.layers) return;
+    acc.layers = true;
+    const map = state.map, ga = acc.gaFeature.geometry;
+    // dim everything outside Greater Accra: a frame around Ghana with the region cut out
+    const holes = (ga.type === "Polygon" ? [ga.coordinates] : ga.coordinates).map(p => p[0]);
+    map.addSource("ga-outside", { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "Polygon",
+      coordinates: [[[-6, 2], [4, 2], [4, 14], [-6, 14], [-6, 2]], ...holes] } } });
+    map.addLayer({ id: "ga-outside", type: "fill", source: "ga-outside", paint: { "fill-color": C.css("--page"), "fill-opacity": 0.6 } }, "labels");
+    map.addSource("ga-line", { type: "geojson", data: acc.gaFeature });
+    map.addLayer({ id: "ga-line", type: "line", source: "ga-line", paint: { "line-color": A.isDark() ? "#d9d8d2" : "#3d3c39", "line-width": 1.8 } }, "stations");
   }
-  function setBasemap() {
-    if (!acc.ready) return;
-    const m = acc.map, line = A.isDark() ? "#d9d8d2" : "#3d3c39";
-    m.getSource("base").setTiles(A.basemapTiles("nolabels"));
-    m.getSource("labels").setTiles(A.basemapTiles("only_labels"));
-    for (const l of ["districts-line", "region-line"]) if (m.getLayer(l)) m.setPaintProperty(l, "line-color", line);
-    m.setPaintProperty("stations", "circle-stroke-color", A.isDark() ? "#1a1a19" : "#ffffff");
-    if (m.getLayer("tahmo")) m.setPaintProperty("tahmo", "circle-color", A.isDark() ? "#1a1a19" : "#ffffff");
+  function setOutsideColour() {
+    if (!acc.layers) return;
+    state.map.setPaintProperty("ga-outside", "fill-color", C.css("--page"));
+    state.map.setPaintProperty("ga-line", "line-color", A.isDark() ? "#d9d8d2" : "#3d3c39");
   }
-  function updateImage() {
-    if (!acc.ready || !state.imageUrl) return;
-    const g = state.manifest.grid;
-    acc.map.getSource("pm").updateImage({ url: state.imageUrl, coordinates: [[g.lon0, g.lat1], [g.lon1, g.lat1], [g.lon1, g.lat0], [g.lon0, g.lat0]] });
-  }
-  function updateStations() {
-    if (!acc.ready) return;
-    acc.map.setLayoutProperty("stations", "visibility", $("a-chk-stations").checked ? "visible" : "none");
-    acc.map.getSource("stations").setData({ type: "FeatureCollection", features: A.stationFeatures().filter(f => inView(f.geometry.coordinates)) });
-  }
-  const inView = ([lon, lat]) => lon >= VIEW[0][0] - 0.2 && lon <= VIEW[1][0] + 0.2 && lat >= VIEW[0][1] - 0.2 && lat <= VIEW[1][1] + 0.2;
 
-  function onMove(e) {
-    const d = state.day, ro = $("a-readout"); if (!d) return;
-    const i = A.cellAt(e.lngLat.lng, e.lngLat.lat);
-    if (i < 0 || d.code[i] === 0) { ro.hidden = true; return; }
-    const pm = d.pm[i], cat = S.aqiCategory(pm), m = acc.map;
-    const dist = m.getLayer("districts-fill") ? m.queryRenderedFeatures(e.point, { layers: ["districts-fill"] })[0] : null;
-    const st = m.queryRenderedFeatures(e.point, { layers: ["stations"] })[0];
-    const tw = m.getLayer("tahmo") ? m.queryRenderedFeatures(e.point, { layers: ["tahmo"] })[0] : null;
-    let wx = "";
-    if (tw) {
-      const s = acc.tahmo.series[tw.properties.code], k = s ? s.date.indexOf(state.date) : -1;
-      wx = `<div class="row"><span>${tw.properties.name} (TAHMO)</span><span>${k >= 0 && s.rh && s.rh[k] != null ? C.fmt1(s.rh[k]) + "% RH" : "no data"}</span></div>`;
+  /* ---------- weather-station values on the map ---------- */
+  const shiftDay = (d, k) => new Date(Date.parse(d) + k * 864e5).toISOString().slice(0, 10);
+  function valueAt(code, v, d) {
+    const s = acc.tahmo.series[code]; if (!s || !s[v]) return null;
+    const k = s.date.indexOf(d);
+    return k >= 0 && s[v][k] != null ? s[v][k] : null;
+  }
+  // the map date, or an earlier day (up to 3 back) when more stations have values then: today's daily mean is
+  // usually still incomplete when the portal updates
+  function stationDay(v) {
+    let best = null, nb = 0;
+    for (let k = 0; k <= 3; k++) {
+      const d = shiftDay(state.date, -k), n = acc.tahmo.stations.filter(s => valueAt(s.code, v, d) != null).length;
+      if (n > nb) { best = d; nb = n; }
     }
-    ro.hidden = false;
-    ro.innerHTML = `<div class="muted">${e.lngLat.lat.toFixed(3)}°N, ${e.lngLat.lng.toFixed(3)}°E${dist ? " · " + dist.properties.name : ""}</div>
-      <div class="big">${C.fmt1(pm)} <span class="muted">µg/m³</span></div>
-      <div class="row"><span>90% interval</span><span>${C.fmt1(d.lo[i])} – ${C.fmt1(d.hi[i])}</span></div>
-      <div class="row"><span>AQI</span><span class="cat-chip"><i style="background:${cat.color}"></i>${S.aqiValue(pm)} · ${cat.label}</span></div>
-      ${st ? `<div class="row"><span>${st.properties.name}</span><span>${st.properties.has ? C.fmt1(st.properties.obs) + " obs." : "no obs."}</span></div>` : ""}${wx}`;
+    return best;
   }
-  function onClick(e) {
-    const tw = acc.map.getLayer("tahmo") ? acc.map.queryRenderedFeatures(e.point, { layers: ["tahmo"] })[0] : null;
-    if (tw) { $("a-wx-station").value = tw.properties.code; renderWeather(); }
-    const st = acc.map.queryRenderedFeatures(e.point, { layers: ["stations"] })[0];
-    acc.sel = { lng: e.lngLat.lng, lat: e.lngLat.lat, station: st ? st.properties.site_id : null };
-    A.renderSeriesPanel(false, TS_IDS, acc.sel);
+  // stations that reported in the 30 days before `day` (the others have stopped and get no pin)
+  function reporting(code, day) {
+    const s = acc.tahmo.series[code]; if (!s || !day) return false;
+    const from = shiftDay(day, -30);
+    return s.date.some(d => d > from && d <= day);
+  }
+  function clearPins() { acc.pins.forEach(m => m.remove()); acc.pins = []; }
+  function renderPins() {
+    clearPins();
+    const T = acc.tahmo, v = $("wx-map-var").value, lg = $("wx-legend");
+    if (!acc.active || !v || !T || !T.stations.length) { lg.hidden = true; return; }
+    const day = stationDay(v);
+    const vals = T.stations.filter(s => reporting(s.code, day)).map(s => ({ s, x: valueAt(s.code, v, day) }));
+    const xs = vals.map(o => o.x).filter(x => x != null);
+    let lo = v === "precip" ? 0 : d3.min(xs), hi = d3.max(xs);
+    if (xs.length && hi - lo < 1e-6) { lo -= 0.5; hi += 0.5; }
+    const ramp = A.isDark() ? BLUES_DARK : BLUES_LIGHT, col = d3.scaleSequential(d3.piecewise(d3.interpolateRgb, ramp)).domain([lo, hi]);
+    const sel = $("a-wx-station").value;
+    for (const { s, x } of vals) {
+      const el = document.createElement("div");
+      el.className = `wx-pin${x == null ? " none" : ""}${s.code === sel ? " sel" : ""}`;
+      const wd = v === "ws10" && day ? valueAt(s.code, "wd", day) : null;
+      const arrow = wd != null ? `<svg viewBox="0 0 14 14" style="width:14px;height:14px;transform:rotate(${Math.round(wd + 180) % 360}deg)" aria-hidden="true"><path d="M7 12.5V2M3 6l4-4 4 4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>` : "";
+      el.innerHTML = `<span class="sw" style="${x == null ? "" : `background:${col(x)}`}"></span>${x == null ? "–" : PIN[v](x)}${arrow}`;
+      el.title = `${s.name} (${s.code}) · ${WX[v][0]}: ${x == null ? "no data" : `${C.fmt1(x)} ${WX[v][1]}`}${day ? ` on ${day}` : ""}${wd != null ? ` · wind from ${Math.round(wd)}°` : ""}`;
+      el.onclick = (e) => { e.stopPropagation(); $("a-wx-station").value = s.code; renderWeather(); renderPins(); };
+      acc.pins.push(new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(state.map));
+    }
+    lg.hidden = false;
+    if (!xs.length) {
+      lg.innerHTML = `<div class="title">${WX[v][0]} at weather stations</div><div class="sub">No station data within 3 days of ${state.date}.</div>`;
+      return;
+    }
+    const f = v === "rh" ? d3.format(".0f") : d3.format(".1f");
+    lg.innerHTML = `<div class="title">${WX[v][0]} at weather stations (${WX[v][1]})</div>
+      <div class="ramp" style="width:180px;background:linear-gradient(90deg,${ramp.join(",")})"></div>
+      <div class="ticks" style="width:180px"><span style="left:0;transform:none">${f(lo)}</span><span style="left:100%;transform:translateX(-100%)">${f(hi)}</span></div>
+      <div class="sub">TAHMO daily means for ${day}${day !== state.date ? " (latest complete day)" : ""}${v === "ws10" ? "; arrows point where the wind blows" : ""}.</div>`;
   }
 
   /* ---------- KPIs and district table ---------- */
   function tIndex() { return state.regions ? state.regions.dates.indexOf(state.date) : -1; }
   function renderKPIs() {
-    const R = state.regions, t = tIndex(), k = acc.adm1;
-    const obs = (state.obsByDate.get(state.date) || []);
-    const sites = new Map(state.stations.map(s => [s.site_id, s]));
-    const n = obs.filter(o => { const s = sites.get(o.site_id); return s && acc.gaFeature && d3.geoContains(acc.gaFeature, [s.lon, s.lat]); }).length;
-    $("a-k-obs").textContent = n;
+    const R = state.regions, t = tIndex(), k = acc.adm1, d = state.day, m = acc.mask;
+    if (d && m) {
+      const v = [];
+      for (let i = 0; i < m.length; i++) if (m[i] && d.code[i] !== 0 && Number.isFinite(d.pm[i])) v.push(d.pm[i]);
+      v.sort((a, b) => a - b);
+      $("a-k-range").textContent = v.length ? `${C.fmt1(d3.quantileSorted(v, 0.05))}–${C.fmt1(d3.quantileSorted(v, 0.95))}` : "—";
+      $("a-k-range-sub").textContent = v.length ? `µg/m³ across ${d3.format(",")(v.length)} 1-km cells (5th–95th percentile)` : "";
+    }
     if (!R || t < 0 || k < 0) { ["a-k-pw", "a-k-who", "a-k-gepa", "a-k-top"].forEach(id => $(id).textContent = "—"); return; }
     const a = R.adm1;
     $("a-k-pw").textContent = C.fmt1(a.pop_weighted[k][t]) + " µg/m³";
@@ -179,7 +199,7 @@
     $("a-k-who").textContent = C.fmtPct(a.pop_frac_gt15[k][t]);
     $("a-k-gepa").textContent = C.fmtPct(a.pop_frac_gt35[k][t]);
     let best = null;
-    acc.districts.forEach(d => { const v = R.adm2.pop_weighted[d.k][t]; if (v != null && (!best || v > best.v)) best = { name: d.name, v }; });
+    acc.districts.forEach(x => { const v = R.adm2.pop_weighted[x.k][t]; if (v != null && (!best || v > best.v)) best = { name: x.name, v }; });
     $("a-k-top").textContent = best ? best.name : "—";
     $("a-k-top-sub").textContent = best ? `${C.fmt1(best.v)} µg/m³ population-weighted` : "";
   }
@@ -187,7 +207,7 @@
     const R = state.regions, t = tIndex();
     if (!R || t < 0 || !acc.districts.length) return C.table("#a-district-table", [], []);
     const a2 = R.adm2;
-    const rows = acc.districts.map(d => ({ ...d, pw: a2.pop_weighted[d.k][t], lo: a2.lower90[d.k][t], hi: a2.upper90[d.k][t], f35: a2.pop_frac_gt35[d.k][t], pop: a2.population ? a2.population[d.k] : null }));
+    const rows = acc.districts.map(d => ({ ...d, pw: a2.pop_weighted[d.k][t], lo: a2.lower90[d.k][t], hi: a2.upper90[d.k][t], f35: a2.pop_frac_gt35[d.k][t] }));
     C.table("#a-district-table", [
       { key: "name", label: "District" },
       { key: "pw", label: "PM2.5", num: true, fmt: (v) => v == null ? "—" : `<span class="cat-chip"><i style="background:${S.colorAt(S.PM_STOPS, v)}"></i>${C.fmt1(v)}</span>` },
@@ -196,15 +216,14 @@
     ], rows, { sortKey: "pw", onRow: (r) => zoomTo(r.name) });
   }
   function zoomTo(name) {
-    if (!acc.ready || !acc.adm2) return;
+    if (!state.mapReady || !acc.adm2) return;
     const f = acc.adm2.features.find(x => x.properties.name === name); if (!f) return;
-    const b = d3.geoBounds(f);
-    acc.map.fitBounds(b, { padding: 40, maxZoom: 12 });
+    state.map.fitBounds(d3.geoBounds(f), { padding: 40, maxZoom: 12 });
   }
 
   /* ---------- trend: Greater Accra vs Ghana ---------- */
   function renderTrend() {
-    const R = state.regions; if (!R || acc.adm1 < 0 || !$("a-trend").clientWidth) return;
+    const R = state.regions; if (!acc.active || !R || acc.adm1 < 0 || !$("a-trend").clientWidth) return;
     const dates = R.dates.map(d => new Date(d)), nz = v => (v == null ? NaN : v);
     const ga = A.smooth(R.adm1.pop_weighted[acc.adm1].map(nz), 7), gh = A.smooth(R.adm0.pop_weighted[0].map(nz), 7);
     const series = [
@@ -219,7 +238,7 @@
   function initWeather() {
     const T = acc.tahmo;
     if (!T || !T.stations.length) {
-      $("a-wx-station").disabled = true; $("a-wx-var").disabled = true;
+      $("a-wx-station").disabled = true; $("a-wx-var").disabled = true; $("wx-map-var").disabled = true;
       $("a-wx-chart").innerHTML = `<div class="empty">No weather-station data published yet. It appears here after the TAHMO download runs with the project's credentials.</div>`;
       return;
     }
@@ -229,12 +248,12 @@
     $("a-wx-station").innerHTML = T.stations.map(s => `<option value="${s.code}">${s.name} (${s.code})${old(s) ? ` · until ${last(s) || "n/a"}` : ""}</option>`).join("");
     const dist = s => Math.hypot(s.lat - 5.60, (s.lon + 0.19) * Math.cos(5.6 * Math.PI / 180));  // to the centre used in scripts/12_tahmo_accra.py
     $("a-wx-station").value = T.stations.filter(s => !old(s)).sort((a, b) => dist(a) - dist(b)).concat(T.stations)[0].code;
-    $("a-wx-station").onchange = renderWeather; $("a-wx-var").onchange = renderWeather;
+    $("a-wx-station").onchange = () => { renderWeather(); renderPins(); };
+    $("a-wx-var").onchange = renderWeather;
     $("a-wx-sub").textContent = `${T.stations.length} TAHMO station${T.stations.length > 1 ? "s" : ""} · daily, updated ${T.generated_at.slice(0, 10)}`;
-    renderWeather();
   }
   function renderWeather() {
-    const T = acc.tahmo; if (!T || !T.stations.length || !$("a-wx-chart").clientWidth) return;
+    const T = acc.tahmo; if (!acc.active || !T || !T.stations.length || !$("a-wx-chart").clientWidth) return;
     const code = $("a-wx-station").value, v = $("a-wx-var").value, s = T.series[code];
     if (!s || !s[v]) return C.timeSeries("#a-wx-chart", { series: [], emptyText: "No data for this variable at this station" });
     const pts = s.date.map((d, i) => ({ date: new Date(d), value: s[v][i] == null ? NaN : s[v][i] }));

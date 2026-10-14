@@ -372,7 +372,7 @@ def export(days: int = 400):
     for code, g in d.groupby("code"):
         g = g.sort_values("date")
         series[code] = {"date": g.date.dt.strftime("%Y-%m-%d").tolist(),
-                        **{c: [None if not np.isfinite(v) else round(float(v), 2) for v in g[c]] for c in ["t2m", "rh", "precip", "ws10"] if c in g}}
+                        **{c: [None if not np.isfinite(v) else round(float(v), 2) for v in g[c]] for c in ["t2m", "rh", "precip", "ws10", "wd"] if c in g}}
     js = dict(generated_at=pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%S"),
               stations=[dict(code=r.code, name=r["name"], lat=float(r.lat), lon=float(r.lon)) for _, r in st.iterrows()],
               series=series)
