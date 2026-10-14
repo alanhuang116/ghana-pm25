@@ -1,0 +1,79 @@
+name: TAHMO Accra experiments
+
+# Run by hand (Actions -> TAHMO Accra experiments -> Run workflow) after adding the repository secrets
+# TAHMO_USERNAME and TAHMO_PASSWORD. Downloads the full TAHMO record for the Accra area, runs the
+# experiments in scripts/12_tahmo_accra.py, commits report/tahmo/ to main, and saves the pipeline
+# state so the next daily run publishes the results in the portal's Accra tab.
+on:
+  workflow_dispatch:
+    inputs:
+      quick:
+        description: "Quick mode (LightGBM only for the PM2.5 model experiment)"
+        type: boolean
+        default: false
+      start:
+        description: "First day of the TAHMO download"
+        default: "2024-08-01"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ghpm25-daily        # shares the pipeline state with the daily job, so never run both at once
+  cancel-in-progress: false
+
+jobs:
+  experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAHMO_USERNAME: ${{ secrets.TAHMO_USERNAME }}
+      TAHMO_PASSWORD: ${{ secrets.TAHMO_PASSWORD }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install Python environment
+        run: |
+          uv venv --python 3.12
+          uv pip install -r requirements.txt
+
+      - name: Check credentials
+        run: |
+          if [ -z "$TAHMO_USERNAME" ] || [ -z "$TAHMO_PASSWORD" ]; then
+            echo "::error::Add the repository secrets TAHMO_USERNAME and TAHMO_PASSWORD first (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Restore pipeline state (training table, weather inputs, model settings)
+        run: .venv/bin/python scripts/09_pipeline_state.py restore
+
+      - name: Download TAHMO stations and daily weather
+        run: .venv/bin/python scripts/12_tahmo_accra.py download --start "${{ inputs.start }}"
+
+      - name: Run experiments
+        run: .venv/bin/python scripts/12_tahmo_accra.py experiments ${{ inputs.quick && '--quick' || '' }}
+
+      - name: Save pipeline state (adds TAHMO data and results for the daily portal run)
+        run: .venv/bin/python scripts/09_pipeline_state.py save --upload
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add report/tahmo
+          git commit -m "TAHMO Accra experiment results" || echo "no changes"
+          git pull --rebase origin main && git push origin HEAD:main
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tahmo-experiments
+          path: |
+            outputs/tahmo/
+            report/tahmo/
+          retention-days: 30

@@ -20,6 +20,7 @@
   </div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="monitor" aria-selected="true">Monitor</button>
+    <button role="tab" data-tab="accra">Accra</button>
     <button role="tab" data-tab="stations">Stations</button>
     <button role="tab" data-tab="exposure">Exposure &amp; trends</button>
     <button role="tab" data-tab="validation">Model &amp; validation</button>
@@ -91,6 +92,84 @@
         <div id="region-table" class="table-wrap"></div>
       </div>
     </aside>
+  </div>
+</section>
+
+<!-- ============================== ACCRA ============================== -->
+<section id="tab-accra" class="tab" role="tabpanel">
+  <div class="filter-row">
+    <div class="date-ctl">
+      <button class="icon-btn" id="a-prev" title="Previous day">‹</button>
+      <input type="date" id="a-date" aria-label="Date">
+      <button class="icon-btn" id="a-next" title="Next day">›</button>
+      <button class="btn" id="a-latest">Latest</button>
+      <span id="a-tier" class="tier">—</span>
+    </div>
+    <label class="ctl">Layer
+      <select id="a-layer">
+        <option value="pm25">PM2.5 daily mean</option>
+        <option value="aqi">US EPA AQI category (2024)</option>
+        <option value="who">Exceedance: WHO 24-h guideline (15)</option>
+        <option value="gepa">Exceedance: Ghana EPA 24-h (35)</option>
+        <option value="relunc">Relative uncertainty (interval / mean)</option>
+        <option value="diff">GH-PM25 − CAMS</option>
+      </select>
+    </label>
+    <label class="ctl chk"><input type="checkbox" id="a-chk-stations" checked> PM2.5 monitors</label>
+    <label class="ctl chk"><input type="checkbox" id="a-chk-tahmo" checked> Weather stations (TAHMO)</label>
+    <label class="ctl">Opacity <input type="range" id="a-opacity" min="0.2" max="1" step="0.05" value="0.8"></label>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Greater Accra, population-weighted</div><div class="kpi-value" id="a-k-pw">—</div><div class="kpi-sub" id="a-k-pw-sub">µg/m³ · 90% interval</div></div>
+    <div class="kpi"><div class="kpi-label">Residents above WHO 24-h (15)</div><div class="kpi-value" id="a-k-who">—</div><div class="kpi-sub">share of Greater Accra</div></div>
+    <div class="kpi"><div class="kpi-label">Residents above Ghana EPA 24-h (35)</div><div class="kpi-value" id="a-k-gepa">—</div><div class="kpi-sub">share of Greater Accra</div></div>
+    <div class="kpi"><div class="kpi-label">Accra monitors reporting</div><div class="kpi-value" id="a-k-obs">—</div><div class="kpi-sub" id="a-k-obs-sub">valid daily means in Greater Accra</div></div>
+    <div class="kpi"><div class="kpi-label">Most affected district</div><div class="kpi-value small" id="a-k-top">—</div><div class="kpi-sub" id="a-k-top-sub">population-weighted</div></div>
+  </div>
+
+  <div class="monitor-grid">
+    <div class="map-wrap card">
+      <div id="map-accra" class="map" aria-label="Map of daily PM2.5 in Greater Accra"></div>
+      <div class="legend" id="a-legend"></div>
+      <div class="readout" id="a-readout" hidden></div>
+      <div class="map-note" id="a-map-note">1-km cells · districts</div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <div class="card-head"><h3 id="a-ts-title">Location time series</h3><span class="muted" id="a-ts-sub">Click the map</span></div>
+        <div id="a-ts-chart" class="chart" style="height:220px"></div>
+        <details class="tableview"><summary>Table view</summary><div id="a-ts-table"></div></details>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Districts today</h3><span class="muted">Greater Accra, population-weighted</span></div>
+        <div id="a-district-table" class="table-wrap"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><h3>Local weather</h3><span class="muted" id="a-wx-sub">TAHMO automatic weather stations, daily</span></div>
+      <div class="filter-row compact">
+        <label class="ctl">Station <select id="a-wx-station"></select></label>
+        <label class="ctl">Variable <select id="a-wx-var">
+          <option value="rh">Relative humidity (%)</option><option value="t2m">Air temperature (°C)</option>
+          <option value="precip">Rainfall (mm/day)</option><option value="ws10">Wind speed (m/s)</option>
+        </select></label>
+      </div>
+      <div id="a-wx-chart" class="chart" style="height:240px"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Greater Accra and Ghana</h3><span class="muted">population-weighted PM2.5, 7-day mean · reference lines WHO 15, Ghana EPA 35</span></div>
+      <div id="a-trend" class="chart" style="height:240px"></div>
+      <div class="legend-inline" id="a-trend-legend"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>What the weather stations change</h3><span class="muted" id="a-exp-sub">experiments with TAHMO data (scripts/12_tahmo_accra.py)</span></div>
+    <div id="a-exp"></div>
   </div>
 </section>
 
@@ -282,5 +361,6 @@ accra = ds.pm25.sel(lat=5.60, lon=-0.19, method="nearest").to_series()</pre>
 <script src="js/charts.js"></script>
 <script src="js/app.js"></script>
 <script src="js/download.js"></script>
+<script src="js/accra.js"></script>
 </body>
 </html>

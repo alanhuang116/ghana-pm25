@@ -29,6 +29,7 @@ PATHS = [
     "outputs/region_daily_stats.parquet", "outputs/tiers.json", "outputs/freshness.json", "outputs/run_summary.json",
     "outputs/cv_oof.parquet", "outputs/cv_metrics.csv", "outputs/calibration_report.csv", "outputs/uncertainty_coverage.csv",
     "outputs/ablation_metrics.csv", "outputs/shap_importance.csv", "outputs/per_site_metrics.csv",
+    "data/interim/tahmo_daily.parquet", "data/interim/tahmo_stations.parquet", "outputs/tahmo",
 ]
 
 
