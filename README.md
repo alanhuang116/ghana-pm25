@@ -87,7 +87,7 @@ To schedule the run on Windows, use `scripts/schedule_windows_task.ps1`. To sche
 
 ## Accra view and TAHMO weather stations
 
-The portal's **Accra** tab (`#accra`) shows Greater Accra at full 1-km detail: district statistics, the city's PM2.5 monitors, Greater Accra against the national mean, and daily weather from TAHMO automatic weather stations.
+The **Monitor** tab has a **Ghana / Greater Accra** switch (`#accra` opens the city view directly). The Greater Accra view crops the 1-km map to the region and, by default, stretches the colours to the region's own range for the day, so differences inside the city show up; the **Colours** menu switches back to the national scale. The view also shows TAHMO weather-station values on the map (temperature, humidity, rain, or wind with direction arrows), district statistics, local weather series, Greater Accra against the national mean, and the experiment results below.
 
 TAHMO data needs an account. The code reads the login only from the environment, never from files in the repository:
 
@@ -98,7 +98,7 @@ TAHMO data needs an account. The code reads the login only from the environment,
    * **E3:** whether local weather improves the PM2.5 model for Accra.
 
    Results are committed to `report/tahmo/`.
-3. From then on, the daily job refreshes the last 10 days of TAHMO data and publishes them, with the experiment results, to the Accra tab. Without the secrets, that step is skipped.
+3. From then on, the daily job refreshes the last 10 days of TAHMO data and publishes them, with the experiment results, to the Greater Accra view. Without the secrets, that step is skipped.
 
 ```powershell
 .venv\Scripts\python.exe scripts\12_tahmo_accra.py download            # needs TAHMO_USERNAME / TAHMO_PASSWORD
