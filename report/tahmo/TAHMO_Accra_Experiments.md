@@ -1,6 +1,6 @@
 # TAHMO weather stations in Accra: experiments
 
-Generated 2026-10-14 17:48 UTC by `scripts/12_tahmo_accra.py experiments`.
+Generated 2026-10-14 18:12 UTC by `scripts/12_tahmo_accra.py experiments`.
 
 ## E0. Stations and coverage
 
@@ -29,7 +29,7 @@ Daily values need 75% of the 5-minute samples (00-24 UTC). Columns `days_*` coun
 | precip | 3360 | 2.468 | 4.507 | 2.039 | 13.661 | 0.229 | 13.339 | 0.196 |
 | ws10 | 4402 | 1.161 | 3.108 | 1.947 | 2.041 | 0.454 | 0.332 | 0.445 |
 | ps | 4458 | 100.682 | 100.421 | -0.261 | 0.369 | 0.656 | 0.262 | 0.646 |
-| ssrd | 4484 | 12.454 | 4.741 | -7.714 | 9.109 | 0.599 | 4.31 | 0.595 |
+| ssrd | 4484 | 3.46 | 4.741 | 1.281 | 1.752 | 0.599 | 1.197 | 0.595 |
 
 ## E2. Low-cost sensor calibration: model humidity versus measured humidity
 
