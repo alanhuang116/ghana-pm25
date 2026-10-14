@@ -187,9 +187,9 @@ def _circmean_deg(x: pd.Series) -> float:
 
 def daily(m: pd.DataFrame) -> pd.DataFrame:
     """5-min long table -> one row per day with GH-PM25 column names. Multi-sensor variables are averaged."""
-    if m.empty:
-        return pd.DataFrame(columns=["date"])
     m = m[m.variable.isin(VARIABLES)].copy()
+    if m.empty:  # e.g. a station that only sends logger or soil data in the period
+        return pd.DataFrame(columns=["date"])
     m["date"] = m.time.dt.floor("D")
     # one value per timestamp and variable (average duplicate sensors)
     agg_ts = m.groupby(["variable", "date", "time"]).value.mean().reset_index()
