@@ -130,6 +130,11 @@ def in_bbox(df: pd.DataFrame, b: dict = ACCRA_BBOX) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # measurements
 # ---------------------------------------------------------------------------
+def _empty_measurements() -> pd.DataFrame:
+    return pd.DataFrame({"time": pd.Series(dtype="datetime64[ns]"), "variable": pd.Series(dtype=object),
+                         "sensor": pd.Series(dtype=object), "value": pd.Series(dtype=float)})
+
+
 def parse_measurements(js: dict) -> pd.DataFrame:
     """Long table time, variable, sensor, value (flag-1 values only; others set to NaN)."""
     frames = []
@@ -140,7 +145,7 @@ def parse_measurements(js: dict) -> pd.DataFrame:
             d = pd.DataFrame(s["values"], columns=s["columns"])
             frames.append(d[[c for c in ("time", "variable", "sensor", "value", "quality") if c in d]])
     if not frames:
-        return pd.DataFrame(columns=["time", "variable", "sensor", "value"])
+        return _empty_measurements()
     d = pd.concat(frames, ignore_index=True)
     d["time"] = pd.to_datetime(d["time"], utc=True).dt.tz_localize(None)
     d["value"] = pd.to_numeric(d["value"], errors="coerce")
@@ -166,7 +171,9 @@ def measurements(code: str, start: str, end: str, dataset: str = "controlled", r
         d = parse_measurements(js)
         d.to_parquet(f)
         frames.append(d)
-    d = pd.concat(frames, ignore_index=True) if frames else parse_measurements({})
+    frames = [f for f in frames if len(f)]  # months without data would turn the time column into object dtype
+    d = pd.concat(frames, ignore_index=True) if frames else _empty_measurements()
+    d["time"] = pd.to_datetime(d["time"])
     return d[(d.time >= pd.Timestamp(start)) & (d.time < pd.Timestamp(end) + pd.Timedelta(days=1))]
 
 
